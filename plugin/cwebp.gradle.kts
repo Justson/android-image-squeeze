@@ -88,4 +88,14 @@ val fetchCwebp by tasks.registering {
 tasks.named<ProcessResources>("processResources") {
     dependsOn(fetchCwebp)
     from(cwebpOutDir) { into("bin") }
+
+    // BSD-3 要求「以二进制形式再分发时必须重现版权声明」。官方二进制归档里并没有
+    // COPYING，所以许可证文本是从上游源码 vendor 进仓库的，这里确保它确实进了 jar。
+    doLast {
+        val license = destinationDir.resolve("licenses/libwebp-COPYING.txt")
+        check(license.isFile && license.length() > 0) {
+            "缺少 libwebp 许可证：$license —— 分发 cwebp 二进制必须附带 BSD-3 " +
+                "版权声明，见 THIRD-PARTY-NOTICES.md"
+        }
+    }
 }

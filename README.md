@@ -111,5 +111,9 @@ Lookup order: explicit path in settings -> bundled binary -> `cwebp` on `PATH`.
 
 ## License
 
-MIT for this repository. Bundled `cwebp` binaries are BSD-3 (libwebp, Google) and ship with
-their own `COPYING`.
+MIT for this repository.
+
+The bundled `cwebp` binaries are BSD-3-Clause (libwebp, Google). That license requires binary
+redistributions to reproduce the copyright notice, and the official binary archives do **not**
+contain one — so the license text is vendored from the upstream source tree and packed into the
+plugin jar. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

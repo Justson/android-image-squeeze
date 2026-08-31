@@ -68,7 +68,11 @@ JVM 上没有纯 Java 的 WebP 编码器。两个选项：
 
 `WebpCodec.locate()` 三级回退：**设置里的显式路径 → 随包二进制 → PATH 上的系统 cwebp**。
 
-> 许可证：libwebp 是 BSD-3。随包分发需附 `COPYING`，见 §5 P1 备注。
+**许可证**：libwebp 是 BSD-3，条款要求「以二进制形式再分发时必须重现版权声明」。
+坑在于**官方二进制归档里并没有 COPYING**，只在 README.md 里指了个链接。
+因此许可证文本从上游源码 tag `v1.4.0` vendor 进仓库
+（`plugin/src/main/resources/licenses/libwebp-COPYING.txt`），随 jar 一起分发；
+`processResources` 有一道 check 确保它确实进了产物。详见 `THIRD-PARTY-NOTICES.md`。
 
 ---
 
@@ -167,7 +171,7 @@ ToolWindow 用 `TableView<AssetReport>`，列：
 | 阶段 | 内容 | 验收 | 状态 |
 |---|---|---|---|
 | **P0** | core 算法 + 单测 | `./gradlew :core:test` 绿 | ✅ **已完成，16/16 通过** |
-| **P1** | cwebp 下载/校验/释放链路 | 能对样例图编码出 webp | ✅ **已完成**（见 §2；`COPYING` 随包待补） |
+| **P1** | cwebp 下载/校验/释放链路 + 许可证合规 | 能对样例图编码出 webp | ✅ **已完成**（见 §2） |
 | **P2** | 单文件流程：右键 → 分析 → 预览 → 替换 | 在真实 Android 工程上跑通一张图 | ⬜ |
 | **P3** | 全工程扫描 + 表格 + 批量应用 | 扫完一个真实工程出列表 | ⬜ |
 | **P4** | 宿主底色解析接 PSI | 能解析出 `#F0F6FB` 这类 | ⬜ |
