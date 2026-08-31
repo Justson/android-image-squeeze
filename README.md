@@ -31,7 +31,8 @@ Every one of these is encoded as a check, a threshold, or a regression test in `
 
 ## How it decides
 
-The route is chosen by **the shape of the alpha channel**, nothing else:
+The preferred route is chosen by **the shape of the alpha channel**, then constrained by whether
+the host background is actually safe to bake:
 
 ```
 semi-transparent pixels (alpha 1..249) <= 2%   ->  KEEP_ALPHA
@@ -39,11 +40,13 @@ semi-transparent pixels (alpha 1..249) <= 2%   ->  KEEP_ALPHA
     A binary alpha channel cannot band, so this needs no knowledge of the host
     background and the asset stays reusable. Measured 4~21x.
 
-otherwise (gradient alpha)                     ->  BAKE_BACKGROUND
-    Composite onto the host background, drop alpha entirely.
-    For these images almost all the bytes live in the alpha plane, so keeping
-    alpha saves nothing — it has to go. Measured 8~24x.
-    Requires the asset to be used over exactly one known solid color.
+otherwise (gradient alpha)
+    one known solid host color                  ->  BAKE_BACKGROUND
+        Composite onto the host background and drop alpha. Measured 8~24x.
+
+    unknown/dynamic host + worthwhile saving    ->  KEEP_ALPHA fallback
+        Keep alpha lossless and compress RGB. This is smaller less often, but
+        remains reusable and avoids baking a wrong background into the asset.
 ```
 
 Three independent metrics, each catching what the others miss:
@@ -111,8 +114,9 @@ Lookup order: explicit path in settings -> bundled binary -> `cwebp` on `PATH`.
 - **Whole project**: the *Asset Squeeze* tool window scans in parallel, ranks by bytes saved,
   and applies to a multi-selection in one go.
 
-The Apply button is deliberately disabled when the route is `NONE` (not worth it), when the
-compressed result bands, or when a bake route has no unambiguous host background. Batch apply
+The Apply button is deliberately disabled when the route is `NONE` (not worth it) or when the
+compressed result bands. A gradient-alpha image with no unambiguous host background first falls
+back to `KEEP_ALPHA`; it is disabled only when that safe route also saves too little. Batch apply
 enforces the same rules and reports what it skipped and why.
 
 ## Not implemented yet

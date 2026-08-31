@@ -84,13 +84,14 @@ class ScanService(private val project: Project) {
                     if (indicator.isCanceled) return@Callable null
                     val io = File(vf.path)
                     val row = runCatching {
-                        val report = analyzer.analyze(io)
                         val key = HostBackgroundResolver.ResKey(
                             HostBackgroundResolver.resourceTypeOf(io),
                             HostBackgroundResolver.resourceNameOf(io),
                         )
                         val bg = bgIndex[key]
                             ?: HostBackgroundResolver.Result.Unresolved("没有布局引用（可能在代码里用）", emptyList())
+                        val background = (bg as? HostBackgroundResolver.Result.Solid)?.color
+                        val report = analyzer.analyze(io, hostBackground = background)
                         ScanRow(vf, report, bg)
                     }.getOrNull()
                     val n = done.incrementAndGet()

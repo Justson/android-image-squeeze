@@ -87,7 +87,10 @@ class HostBackgroundResolver(private val projectRoot: File) {
             values.size == 1 && solids.size == 1 -> Result.Solid(solids.single(), hostNames)
             solids.size > 1 -> Result.Conflict(solids, hostNames)
             values.any { it == NON_SOLID } -> Result.Unresolved("背后是图片/非纯色背景", hostNames)
-            else -> Result.Unresolved("根元素无 background，底色来自 Activity 主题", hostNames)
+            else -> Result.Unresolved(
+                "祖先节点无可解析纯色背景（可能来自主题、兄弟 View 或运行时内容）",
+                hostNames,
+            )
         }
     }
 

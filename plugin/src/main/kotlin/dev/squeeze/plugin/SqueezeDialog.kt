@@ -24,7 +24,7 @@ import javax.swing.JPanel
  * 「应用」按钮的启用条件是有意收紧的：
  *  - 路线为 NONE          -> 禁用（收益不足，压了只是有损叠有损）
  *  - 压缩后引入了色带      -> 禁用（这是我们最想避免的失真）
- *  - 烘焙路线但底色没解析出 -> 禁用（猜白色会导致线上出现色差方块）
+ *  - 防御性检查：烘焙路线但底色没解析出 -> 禁用（正常分析会先回退 KEEP_ALPHA）
  * 宁可让人手动去确认，也不给一个「看起来能点」的危险按钮。
  */
 class SqueezeDialog(
@@ -60,9 +60,17 @@ class SqueezeDialog(
         val original = WebpCodec.read(io)
 
         if (report.route == CompressionRoute.NONE) {
-            blockedReason = "收益不足（预估 ${report.estimatedBytes / 1024}KB / 当前 " +
-                "${report.currentBytes / 1024}KB），不建议压缩"
-            comparePanel.show(original, null, bakeColor(), "路线：不压缩")
+            blockedReason = if (!report.alpha.isHardEdged && bakeColor() == null) {
+                "宿主底色无法确定，且安全的保留 alpha 路线收益不足"
+            } else {
+                "收益不足（预估 ${report.estimatedBytes / 1024}KB / 当前 " +
+                    "${report.currentBytes / 1024}KB），不建议压缩"
+            }
+            comparePanel.show(
+                original, null, bakeColor(), "路线：不压缩",
+                hostBackgroundRelevant = !report.alpha.isHardEdged,
+                emptyMessage = blockedReason!!,
+            )
             detail.text = describe(blockedReason!!)
             isOKActionEnabled = false
             return
@@ -77,7 +85,10 @@ class SqueezeDialog(
                     "宿主底色无法确定：${hostBg.reason}"
                 else -> "宿主底色无法确定"
             }
-            comparePanel.show(original, null, null, "路线：烘焙底色（受阻）")
+            comparePanel.show(
+                original, null, null, "路线：烘焙底色（受阻）",
+                emptyMessage = blockedReason!!,
+            )
             detail.text = describe(blockedReason!!)
             isOKActionEnabled = false
             return
@@ -99,7 +110,8 @@ class SqueezeDialog(
                 alphaPreserved = r.alphaPreserved,
                 bandingOk = r.bandingOk,
                 noise = report.noise,
-            )
+            ),
+            hostBackgroundRelevant = report.route == CompressionRoute.BAKE_BACKGROUND,
         )
         if (!r.bandingOk) {
             blockedReason = "压缩后出现色带。逐像素误差看不出这种失真，" +

@@ -57,11 +57,12 @@ class InspectFileAction : AnAction() {
 
             override fun run(indicator: ProgressIndicator) {
                 runCatching {
-                    indicator.text = "编码试算…"
-                    report = analyzer.analyze(io, minSavingRatio = 1.5)
-                    indicator.checkCanceled()
                     indicator.text = "解析宿主底色…"
                     hostBg = resolveHost(project, io)
+                    indicator.checkCanceled()
+                    indicator.text = "编码试算…"
+                    val background = (hostBg as? HostBackgroundResolver.Result.Solid)?.color
+                    report = analyzer.analyze(io, minSavingRatio = 1.5, hostBackground = background)
                 }.onFailure { failure = it }
             }
 

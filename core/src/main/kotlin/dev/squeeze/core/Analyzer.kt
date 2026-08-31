@@ -5,7 +5,7 @@ import java.awt.image.BufferedImage
 import java.io.File
 
 /**
- * 压缩路线。选哪条完全由 alpha 的形态决定，跟图长什么样无关。
+ * 压缩路线。alpha 的形态决定首选路线；宿主底色不可靠时必须回退到安全路线。
  *
  * 这是本工具的核心价值 —— Android Studio 自带的 "Convert to WebP" 只会无脑转，
  * 不会告诉你哪张图转了会出色带、哪张图不该丢 alpha。
@@ -20,9 +20,9 @@ enum class CompressionRoute {
 
     /**
      * 渐变型 alpha：合成到宿主底色、丢掉 alpha。
-     * 这类图体积大头全在 alpha 平面上（有损 WebP 默认 alpha 无损编码，
-     * 存一整片连续渐变代价极高），保住 alpha 就省不了多少，只能彻底去掉。
-     * 实测 8~24x，但前提是这张图只在一种已知纯色背景上使用。
+     * 这类图体积大头通常在 alpha 平面上（有损 WebP 默认 alpha 无损编码，
+     * 存一整片连续渐变代价较高）。烘焙实测 8~24x，但前提是这张图只在一种已知纯色
+     * 背景上使用；底色不可靠且保留 alpha 仍有收益时，必须回退到 KEEP_ALPHA。
      */
     BAKE_BACKGROUND,
 
@@ -69,7 +69,11 @@ class Analyzer(private val codec: WebpCodec) {
                 file.name.endsWith(".9.png", ignoreCase = true)
     }
 
-    fun analyze(file: File, minSavingRatio: Double = 1.5): AssetReport {
+    fun analyze(
+        file: File,
+        minSavingRatio: Double = 1.5,
+        hostBackground: Color? = null,
+    ): AssetReport {
         val img = WebpCodec.read(file)
         val cur = file.length()
         val alpha = ImageStats.alphaProfile(img)
@@ -81,21 +85,41 @@ class Analyzer(private val codec: WebpCodec) {
             img, WebpCodec.Options(quality = 90, alphaQuality = 100)
         ).toLong()
         val bakedBytes = codec.encodedSize(
-            ImageStats.compositeOn(img, Color.WHITE), WebpCodec.Options(quality = 98)
+            ImageStats.compositeOn(img, hostBackground ?: Color.WHITE), WebpCodec.Options(quality = 98)
         ).toLong()
+        val keepAlphaWorthwhile = cur.toDouble() / keepAlphaBytes >= minSavingRatio
+        val bakeWorthwhile = cur.toDouble() / bakedBytes >= 3.0
 
         val route: CompressionRoute
         val estimated: Long
         if (alpha.isHardEdged) {
-            route = if (cur.toDouble() / keepAlphaBytes >= minSavingRatio)
+            route = if (keepAlphaWorthwhile)
                 CompressionRoute.KEEP_ALPHA else CompressionRoute.NONE
             estimated = keepAlphaBytes
         } else {
-            route = if (cur.toDouble() / bakedBytes >= 3.0)
-                CompressionRoute.BAKE_BACKGROUND else CompressionRoute.NONE
-            estimated = bakedBytes
-            warnings += "渐变型 alpha：必须确认宿主底色唯一后才能烘焙，" +
-                    "被多个不同底色的布局复用时会串色"
+            when {
+                hostBackground != null && bakeWorthwhile -> {
+                    route = CompressionRoute.BAKE_BACKGROUND
+                    estimated = bakedBytes
+                    warnings += "渐变型 alpha：已确认唯一宿主底色，可安全烘焙"
+                }
+                keepAlphaWorthwhile -> {
+                    route = CompressionRoute.KEEP_ALPHA
+                    estimated = keepAlphaBytes
+                    warnings += if (hostBackground == null) {
+                        "渐变型 alpha：宿主底色未确定，已回退为保留 alpha"
+                    } else {
+                        "渐变型 alpha：烘焙收益不足，已改用保留 alpha"
+                    }
+                }
+                else -> {
+                    route = CompressionRoute.NONE
+                    estimated = keepAlphaBytes
+                    if (hostBackground == null && bakeWorthwhile) {
+                        warnings += "渐变型 alpha：宿主底色未确定，烘焙路线已禁用；保留 alpha 收益不足"
+                    }
+                }
+            }
         }
 
         if (noise.backgroundDependent) {

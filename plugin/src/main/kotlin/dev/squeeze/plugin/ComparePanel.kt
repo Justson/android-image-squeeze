@@ -4,6 +4,7 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
+import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
 import dev.squeeze.core.ImageStats
 import java.awt.BorderLayout
@@ -15,6 +16,8 @@ import java.awt.Graphics2D
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import javax.swing.JComponent
+import javax.swing.JButton
+import javax.swing.DefaultComboBoxModel
 import javax.swing.JPanel
 
 /**
@@ -33,13 +36,20 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
     private val leftView = ImageView("原图")
     private val rightView = ImageView("压缩后")
     private val bgCombo = ComboBox(arrayOf<BgOption>())
+    private val customColor = JBTextField("#FFFFFF", 8)
     private val info = JBLabel()
 
     init {
-        val top = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(8), JBUI.scale(4))).apply {
-            add(JBLabel("预览底色："))
+        val controls = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(8), JBUI.scale(4))).apply {
+            add(JBLabel("预览底色（仅影响预览）："))
             add(bgCombo)
-            add(info)
+            add(JBLabel("自定义："))
+            add(customColor)
+            add(JButton("预览").apply { addActionListener { applyCustomColor() } })
+        }
+        val top = JPanel(BorderLayout()).apply {
+            add(controls, BorderLayout.CENTER)
+            add(info.apply { border = JBUI.Borders.empty(0, 8, 4, 8) }, BorderLayout.SOUTH)
         }
         add(top, BorderLayout.NORTH)
 
@@ -56,37 +66,64 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
                 leftView.refresh(); rightView.refresh()
             }
         }
+        customColor.addActionListener { applyCustomColor() }
     }
 
-    data class BgOption(val label: String, val color: Color?) {
+    data class BgOption(val label: String, val color: Color?, val custom: Boolean = false) {
         override fun toString() = label
     }
 
+    private fun applyCustomColor() {
+        val color = parseSolidColor(customColor.text) ?: run {
+            customColor.putClientProperty("JComponent.outline", "error")
+            customColor.toolTipText = "请输入 #RGB 或 #RRGGBB，例如 #F0F6FB"
+            return
+        }
+        customColor.putClientProperty("JComponent.outline", null)
+        customColor.toolTipText = null
+        customColor.text = color.toHex()
+
+        val model = bgCombo.model as DefaultComboBoxModel<BgOption>
+        for (i in model.size - 1 downTo 0) {
+            if (model.getElementAt(i).custom) model.removeElementAt(i)
+        }
+        val option = BgOption("自定义 ${color.toHex()}", color, custom = true)
+        model.addElement(option)
+        bgCombo.selectedItem = option
+    }
+
     /**
-     * @param hostBackground 解析出的宿主底色；为 null 表示未解析出来，
-     *        此时默认落到棋盘格并在 info 里提示「底色未知，预览仅供参考」
+     * @param hostBackground 解析出的宿主底色；为 null 时默认落到棋盘格。
+     * @param hostBackgroundRelevant 当前路线是否依赖宿主底色；只有依赖且未解析时才警告。
      */
     fun show(
         original: BufferedImage,
         compressed: BufferedImage?,
         hostBackground: Color?,
         summary: String,
+        hostBackgroundRelevant: Boolean = true,
+        emptyMessage: String = "未生成压缩结果",
     ) {
         val options = buildList {
             hostBackground?.let { add(BgOption("宿主底色 ${it.toHex()}", it)) }
+            if (hostBackground == null) add(BgOption("棋盘格（看 alpha 形状）", null))
             add(BgOption("白 #FFFFFF", Color.WHITE))
             add(BgOption("灰 #808080", Color(128, 128, 128)))
             add(BgOption("黑 #000000", Color.BLACK))
-            add(BgOption("棋盘格（看 alpha 形状）", null))
+            if (hostBackground != null) add(BgOption("棋盘格（看 alpha 形状）", null))
         }
         bgCombo.model = javax.swing.DefaultComboBoxModel(options.toTypedArray())
         bgCombo.selectedIndex = 0
+        customColor.text = hostBackground?.toHex() ?: "#FFFFFF"
+        customColor.putClientProperty("JComponent.outline", null)
+        customColor.toolTipText = null
 
         leftView.image = original
         rightView.image = compressed
+        rightView.emptyMessage = if (compressed == null) emptyMessage else null
         leftView.background2 = options.first().color
         rightView.background2 = options.first().color
-        info.text = if (hostBackground == null)
+        info.text = if (hostBackground == null && hostBackgroundRelevant)
             "$summary ｜ ⚠ 宿主底色未解析出来，预览仅供参考"
         else summary
         leftView.refresh()
@@ -95,9 +132,17 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
 
     private fun Color.toHex() = "#%02X%02X%02X".format(red, green, blue)
 
+    private fun parseSolidColor(raw: String): Color? {
+        var hex = raw.trim().removePrefix("#")
+        if (hex.length == 3) hex = hex.map { "$it$it" }.joinToString("")
+        if (hex.length != 6 || hex.any { it.digitToIntOrNull(16) == null }) return null
+        return Color(hex.substring(0, 2).toInt(16), hex.substring(2, 4).toInt(16), hex.substring(4, 6).toInt(16))
+    }
+
     /** 单侧图像视图：等比缩放、可切底色、可显示棋盘格 */
     private class ImageView(private val title: String) : JPanel(BorderLayout()) {
         var image: BufferedImage? = null
+        var emptyMessage: String? = null
         /** null = 棋盘格 */
         var background2: Color? = Color.WHITE
 
@@ -110,7 +155,14 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
                 )
                 val bg = background2
                 if (bg == null) paintChecker(g2) else { g2.color = bg; g2.fillRect(0, 0, width, height) }
-                val img = image ?: return
+                val img = image ?: run {
+                    emptyMessage?.let { text ->
+                        g2.color = JBColor.GRAY
+                        val fm = g2.fontMetrics
+                        g2.drawString(text, ((width - fm.stringWidth(text)) / 2).coerceAtLeast(0), height / 2)
+                    }
+                    return
+                }
                 val scale = minOf(width.toDouble() / img.width, height.toDouble() / img.height)
                     .coerceAtMost(1.0)
                 val w = (img.width * scale).toInt()

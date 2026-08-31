@@ -55,7 +55,7 @@ class SqueezeConfigurable(private val project: Project) :
             }
         }
         group("压缩质量") {
-            row("硬边缘 alpha（RGB 有损 + alpha 无损）：") {
+            row("保留 alpha（RGB 有损 + alpha 无损）：") {
                 intTextField(80..100).bindIntText(s::keepAlphaQuality)
             }
             row("渐变型 alpha（烘焙底色）：") {

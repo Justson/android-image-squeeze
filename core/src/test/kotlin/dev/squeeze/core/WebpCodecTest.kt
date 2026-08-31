@@ -122,7 +122,7 @@ class WebpCodecTest {
      * 这里把门限放到 1.0 以隔离掉「值不值得」，单独验证分流是否正确。
      */
     @Test
-    fun `Analyzer 按 alpha 形态分流到正确路线`() {
+    fun `Analyzer 根据 alpha 形态和宿主底色选择安全路线`() {
         val codec = codecOrSkip()
         val analyzer = Analyzer(codec)
         val dir = File(System.getProperty("java.io.tmpdir"), "squeeze-test").apply { mkdirs() }
@@ -135,7 +135,22 @@ class WebpCodecTest {
 
         val gradFile = File(dir, "gradient.png")
         javax.imageio.ImageIO.write(gradientWithAlpha(), "png", gradFile)
-        val grad = analyzer.analyze(gradFile, minSavingRatio = 1.0)
+        val safeGrad = analyzer.analyze(gradFile, minSavingRatio = 1.0)
+        assertTrue(!safeGrad.alpha.isHardEdged, "渐变遮罩应判为渐变型 alpha")
+        assertEquals(CompressionRoute.KEEP_ALPHA, safeGrad.route)
+        assertTrue(
+            safeGrad.warnings.any { "回退为保留 alpha" in it },
+            "底色未知时应说明安全回退，实际 ${safeGrad.warnings}"
+        )
+        val safeOut = analyzer.compress(gradFile, safeGrad.route, background = null, quality = 90)
+        assertTrue(safeOut.alphaPreserved, "安全回退必须逐像素保留 alpha")
+        assertTrue(safeOut.bandingOk, "安全回退不应引入新增色带")
+
+        val grad = analyzer.analyze(
+            gradFile,
+            minSavingRatio = 1.0,
+            hostBackground = Color(0xF0, 0xF6, 0xFB),
+        )
         assertTrue(!grad.alpha.isHardEdged, "渐变遮罩应判为渐变型 alpha")
         assertEquals(CompressionRoute.BAKE_BACKGROUND, grad.route)
         assertTrue(
