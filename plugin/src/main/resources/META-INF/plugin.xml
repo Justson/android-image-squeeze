@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>dev.squeeze.imagesqueeze</id>
-    <name>Image Squeeze</name>
-    <vendor>internal</vendor>
+    <name>android-image-squeeze</name>
+    <vendor url="https://github.com/Justson">Justson</vendor>
 
     <!--
       描述必须以拉丁字符开头且有足够长度，这是 Marketplace 的硬规则，
@@ -16,8 +16,9 @@
       The route is chosen by the shape of the alpha channel. Assets with hard-edged alpha
       (only 0 or 255) get lossy RGB plus lossless alpha &mdash; a binary channel cannot band,
       so this needs no knowledge of the host background. Assets with gradient alpha keep
-      almost all of their bytes in the alpha plane, so the only way to shrink them is to
-      composite onto the host background and drop alpha entirely.
+      almost all of their bytes in the alpha plane. When a single solid host background can
+      be resolved, android-image-squeeze can composite onto it and drop alpha entirely; otherwise it
+      safely falls back to lossless alpha and compresses RGB only.
       <br><br>
       Three metrics guard the result: banding detection along the gradient (per-pixel error
       is blind to it), dither-versus-texture classification, and per-pixel delta. Assets under
@@ -30,6 +31,16 @@
       中文说明见项目 README。本插件内置 Google 的 cwebp（libwebp，BSD-3-Clause），
       许可证见 jar 内 licenses/libwebp-COPYING.txt。
     ]]></description>
+
+    <change-notes><![CDATA[
+      <b>0.1.0</b>
+      <ul>
+        <li>Audit Android PNG, JPEG and WebP assets from the Project view or tool window.</li>
+        <li>Choose a safe compression route from alpha shape, host background and image texture.</li>
+        <li>Preview the result against detected, preset or manually entered background colors.</li>
+        <li>Apply verified WebP replacements individually or in bulk.</li>
+      </ul>
+    ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
 
