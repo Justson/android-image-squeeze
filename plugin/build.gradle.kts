@@ -33,10 +33,14 @@ dependencies {
 
 intellijPlatform {
     // 官方 verifier：检查 API 兼容性、plugin.xml 合法性、是否误用 internal API。
-    // current() = 只校验当前构建基座(IC 2023.3.8 = platform 233)，不额外下载 IDE。
-    // 想覆盖更多版本可改成 recommended()，但会按 since/untilBuild 拉一堆发行包。
     pluginVerification {
-        ides { current() }
+        ides {
+            current()   // 构建基座本身(platform 233)，不额外下载
+            // 再针对本机实际安装的 IDE 校验一遍。跨版本(233 -> 261)必须实测，
+            // 只靠 untilBuild 放宽范围而不验证，等于把兼容性问题推给用户。
+            // 用法: ./gradlew verifyPlugin -PverifyAgainstIde="C:/.../Android Studio-xxx"
+            providers.gradleProperty("verifyAgainstIde").orNull?.let { local(it) }
+        }
     }
 
     pluginConfiguration {
@@ -45,7 +49,12 @@ intellijPlatform {
         version = providers.gradleProperty("pluginVersion")
         ideaVersion {
             sinceBuild = providers.gradleProperty("pluginSinceBuild")
+            // 属性留空时不写 until-build，让插件不被新版 IDE 按声明拒绝。
+            // providers.gradleProperty 对空字符串仍返回 present，故显式转成 null。
             untilBuild = providers.gradleProperty("pluginUntilBuild")
+                .map { it.trim() }
+                .orElse("")
+                .map { if (it.isEmpty()) null else it }
         }
     }
 }
