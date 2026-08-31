@@ -17,7 +17,7 @@ dependencies {
         // 基于 IC 构建：本插件不使用 Android 插件的私有 API，产物同样能装进 Android Studio。
         // 若将来要读 Android 的 ResourceRepository，再换成 androidStudio(...) 并锁定 AS 版本。
         intellijIdeaCommunity(providers.gradleProperty("platformVersion"))
-        instrumentationTools()
+        // 2.x 新版起代码插桩默认启用，不再需要显式声明 instrumentationTools()
     }
 }
 

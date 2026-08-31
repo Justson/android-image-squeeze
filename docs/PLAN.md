@@ -28,10 +28,26 @@ Android Studio 自带 **Convert to WebP…**，它只做一件事：把选中的
 |---|---|---|
 | 目标平台 | IntelliJ Platform **233**（AS 2023.3 Iguana） | AS 2023.3 `AI-233.14808.21`，JBR 17 ✓ |
 | 构建基座 | `intellijIdeaCommunity("2023.3.8")`，**不用 AI** | 不碰 Android 私有 API，装 AS/IDEA 都行 |
-| 语言/JDK | Kotlin 1.9.22 / JDK 17 | Corretto 17 ✓ |
-| Gradle | 8.13 + IntelliJ Platform Gradle Plugin 2.1.0 | 8.13 无需额外下载 ✓ |
+| 语言/JDK | Kotlin **2.2.0** / JDK 17 | Corretto 17 ✓ |
+| Gradle | **9.1.0** + IntelliJ Platform Gradle Plugin **2.18.1** | 见下方版本联动说明 ✓ |
 | WebP **解码** | TwelveMonkeys `imageio-webp` 3.10.1（纯 Java 只读） | 已在 core 依赖中 ✓ |
 | WebP **编码** | 调用 `cwebp` 进程 | 见下方 §2 |
+
+### 版本联动（升级时注意）
+
+这三者是锁死的，不能单独升：
+
+```
+IntelliJ Platform Gradle Plugin 2.18.1  要求  Gradle >= 9.0
+Gradle 9.1.0                            要求  Kotlin Gradle Plugin >= 2.x
+```
+
+从 2.1.0 升到 2.18.1 时连带做的两处适配：
+- Gradle 8.13 -> 9.1.0，Kotlin 1.9.22 -> 2.2.0
+- 去掉 `instrumentationTools()` —— 新版起代码插桩默认启用，该 API 已移除
+
+`cwebp.gradle.kts` 里的 `zipTree` / `tarTree` / `copy {}` 在 Gradle 9 下无需改动，
+已实跑验证产物一致。
 
 ### 为什么编码不用 JNI
 
