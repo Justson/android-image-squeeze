@@ -1,7 +1,7 @@
 # Asset Squeeze — IDE 插件实施方案
 
-Android 图片素材体检与压缩插件。当前状态：`core` 模块**已可编译、7 个单测全绿**；
-`plugin` 模块为可运行骨架，待补完 UI 装配。
+Android 图片素材体检与压缩插件。当前状态：`core` **16 个测试全绿**（含用真实 cwebp
+跑的端到端编码验证）；cwebp 分发链路已打通；`plugin` 待补 UI 装配。
 
 ---
 
@@ -44,29 +44,31 @@ JVM 上没有纯 Java 的 WebP 编码器。两个选项：
 
 ---
 
-## 2. cwebp 二进制的落地（必须先做，否则 plugin 跑不起来）
+## 2. cwebp 分发链路（已完成）
 
-```
-plugin/src/main/resources/bin/
-  windows-x64/cwebp.exe
-  macos-x64/cwebp
-  macos-arm64/cwebp
-  linux-x64/cwebp
-```
+**不把二进制提交进 git**：四个平台合计约 11MB，且每次升级都会在仓库历史里留一份。
+改成 `plugin/cwebp.gradle.kts` 在构建时下载：
 
-获取方式（从 Google 官方 release 取，勿用第三方转载）：
+| 平台 | 归档 | cwebp 大小 |
+|---|---|---|
+| windows-x64 | `libwebp-1.4.0-windows-x64.zip` | 726 KB |
+| macos-arm64 | `libwebp-1.4.0-mac-arm64.tar.gz` | 2516 KB |
+| macos-x64 | `libwebp-1.4.0-mac-x86-64.tar.gz` | 3170 KB |
+| linux-x64 | `libwebp-1.4.0-linux-x86-64.tar.gz` | 4643 KB |
 
-```bash
-# https://storage.googleapis.com/downloads.webmproject.org/releases/webp/index.html
-curl -LO https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.4.0-windows-x64.zip
-curl -LO https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.4.0-mac-arm64.tar.gz
-# 解压后只取 bin/cwebp
-```
+**供应链**：只用 Google 官方 `downloads.webmproject.org`，逐个校验 SHA-256
+（校验和写死在 `cwebp.gradle.kts`，升级版本必须同步更新，否则构建直接失败）。
 
-`WebpCodec.locate()` 已实现三级回退：**插件设置里的显式路径 → 随包二进制 → PATH 上的系统 cwebp**。
-首次使用时把资源释放到 `PathManager.getSystemPath()/asset-squeeze/bin/` 并 `setExecutable(true)`。
+产物落到 `build/cwebp-bin/<platform>/`，由 `processResources` 映射进 jar 的 `bin/<platform>/`。
 
-> 许可证：libwebp 是 BSD-3，随包分发需在插件描述里附 `COPYING`。内部插件也建议照做。
+**运行时**（`CwebpProvider`）：jar 里的文件不能直接执行，首次使用释放到
+`PathManager.getSystemPath()/asset-squeeze/bin/`，只释放一次、IDE 重启复用。
+**非 Windows 平台必须显式 `setExecutable(true)`** —— jar 不保留 POSIX 权限位，
+解出来是 0644，直接跑会 Permission denied。
+
+`WebpCodec.locate()` 三级回退：**设置里的显式路径 → 随包二进制 → PATH 上的系统 cwebp**。
+
+> 许可证：libwebp 是 BSD-3。随包分发需附 `COPYING`，见 §5 P1 备注。
 
 ---
 
@@ -164,8 +166,8 @@ ToolWindow 用 `TableView<AssetReport>`，列：
 
 | 阶段 | 内容 | 验收 | 状态 |
 |---|---|---|---|
-| **P0** | core 算法 + 单测 | `./gradlew :core:test` 绿 | ✅ **已完成，7/7 通过** |
-| **P1** | cwebp 二进制入包 + 释放逻辑 | 能对样例图编码出 webp | ⬜ |
+| **P0** | core 算法 + 单测 | `./gradlew :core:test` 绿 | ✅ **已完成，16/16 通过** |
+| **P1** | cwebp 下载/校验/释放链路 | 能对样例图编码出 webp | ✅ **已完成**（见 §2；`COPYING` 随包待补） |
 | **P2** | 单文件流程：右键 → 分析 → 预览 → 替换 | 在真实 Android 工程上跑通一张图 | ⬜ |
 | **P3** | 全工程扫描 + 表格 + 批量应用 | 扫完一个真实工程出列表 | ⬜ |
 | **P4** | 宿主底色解析接 PSI | 能解析出 `#F0F6FB` 这类 | ⬜ |

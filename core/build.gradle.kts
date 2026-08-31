@@ -14,10 +14,9 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-}
-
-tasks.test {
-    // 探针需要读工程外的真实素材，用 -Dsqueeze.sampleRoot=... 传入
+    // -Dsqueeze.sampleRoot=... 让 ThresholdProbe 读真实素材做阈值标定
+    // -Dsqueeze.cwebp=...     指定 cwebp 路径，未指定则从 PATH 找，都没有就跳过编码相关用例
     systemProperty("squeeze.sampleRoot", System.getProperty("squeeze.sampleRoot") ?: "")
+    systemProperty("squeeze.cwebp", System.getProperty("squeeze.cwebp") ?: "")
     testLogging { showStandardStreams = true }
 }

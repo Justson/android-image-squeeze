@@ -3,6 +3,9 @@ plugins {
     id("org.jetbrains.intellij.platform")
 }
 
+// 构建时拉取官方 libwebp 并抽出 cwebp（带 SHA-256 校验），二进制不进 git
+apply(from = "cwebp.gradle.kts")
+
 repositories {
     mavenCentral()
     intellijPlatform { defaultRepositories() }

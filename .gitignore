@@ -4,4 +4,5 @@ build/
 .idea/
 *.iml
 out/
+cwebp-cache/
 local.properties

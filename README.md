@@ -6,7 +6,8 @@ An IntelliJ / Android Studio plugin that audits and compresses Android image ass
 the *decision logic* it lacks — figuring out which route each image should take, and refusing
 to compress the ones that would break.
 
-> 状态：`core` 模块已可编译，单测全绿；`plugin` 为可运行骨架。
+> 状态：`core` 16 个测试全绿（含用真实 cwebp 跑的端到端编码验证）；
+> cwebp 四平台分发链路已打通；`plugin` 待补 UI 装配。
 > 完整方案见 [docs/PLAN.md](docs/PLAN.md)。
 
 ---
@@ -93,11 +94,20 @@ false "you broke it" calls during development.
 
 ---
 
+## cwebp
+
+There is no pure-Java WebP encoder, so encoding shells out to Google's `cwebp`.
+The binaries are **not committed** — `plugin/cwebp.gradle.kts` downloads the official
+libwebp releases at build time and verifies each SHA-256, then `processResources` packs
+them into the plugin jar under `bin/<platform>/`. At runtime `CwebpProvider` extracts the
+one for the current platform (and sets the executable bit, which jars do not preserve).
+
+Lookup order: explicit path in settings -> bundled binary -> `cwebp` on `PATH`.
+
 ## Not implemented yet
 
 `plugin` still needs the tool window, the scan action, and the settings page — see
-[docs/PLAN.md](docs/PLAN.md) §5 for the phased plan. P1 (bundling the `cwebp` binaries) is the
-only hard blocker.
+[docs/PLAN.md](docs/PLAN.md) §5 for the phased plan.
 
 ## License
 
