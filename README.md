@@ -6,9 +6,8 @@ An IntelliJ / Android Studio plugin that audits and compresses Android image ass
 the *decision logic* it lacks — figuring out which route each image should take, and refusing
 to compress the ones that would break.
 
-> 状态：`core` 16 个测试全绿（含用真实 cwebp 跑的端到端编码验证）；
-> cwebp 四平台分发链路已打通；`plugin` 待补 UI 装配。
-> 完整方案见 [docs/PLAN.md](docs/PLAN.md)。
+> 状态：单文件流程与全工程扫描均已可用，`verifyPlugin` 干净通过。
+> 完整方案与分阶段计划见 [docs/PLAN.md](docs/PLAN.md)。
 
 ---
 
@@ -104,10 +103,22 @@ one for the current platform (and sets the executable bit, which jars do not pre
 
 Lookup order: explicit path in settings -> bundled binary -> `cwebp` on `PATH`.
 
+## Usage
+
+- **One asset**: right-click an image in the Project view -> *Squeeze: Inspect This Image*.
+  Shows the original and the compressed result side by side, **on the same background**,
+  and applies only if the result passes the banding check.
+- **Whole project**: the *Asset Squeeze* tool window scans in parallel, ranks by bytes saved,
+  and applies to a multi-selection in one go.
+
+The Apply button is deliberately disabled when the route is `NONE` (not worth it), when the
+compressed result bands, or when a bake route has no unambiguous host background. Batch apply
+enforces the same rules and reports what it skipped and why.
+
 ## Not implemented yet
 
-`plugin` still needs the tool window, the scan action, and the settings page — see
-[docs/PLAN.md](docs/PLAN.md) §5 for the phased plan.
+Result caching between scans, and resolving host backgrounds through PSI so that theme
+attributes (`?attr/colorSurface`) also work — see [docs/PLAN.md](docs/PLAN.md) §5.
 
 ## License
 

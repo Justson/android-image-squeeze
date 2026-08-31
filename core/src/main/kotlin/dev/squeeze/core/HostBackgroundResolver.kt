@@ -33,6 +33,37 @@ class HostBackgroundResolver(private val projectRoot: File) {
 
     private val colorTable: Map<String, String> by lazy { loadColors() }
 
+    /** 资源标识：(类型, 名称)。类型必须参与 key —— @mipmap/x 与 @drawable/x 不是同一个资源 */
+    data class ResKey(val type: String, val name: String)
+
+    /**
+     * 一次遍历所有布局，建立「资源 -> 身后底色」的全量索引。
+     *
+     * 批量扫描必须用这个而不是逐个 [resolve]：后者每查一个资源都要重新遍历所有布局，
+     * 复杂度是 O(资源数 × 布局数)，几百张图就会卡到不可用。
+     *
+     * @param progress 可选回调，参数为已处理的布局数
+     */
+    fun resolveAll(progress: ((Int) -> Unit)? = null): Map<ResKey, Result> {
+        // key -> [(布局名, 底色)]
+        val hits = HashMap<ResKey, MutableList<Pair<String, Any?>>>()
+        var processed = 0
+        forEachLayout { file, doc ->
+            val parents = HashMap<Node, Node>()
+            indexParents(doc.documentElement, parents)
+            visit(doc.documentElement) { el ->
+                for (attr in ANDROID_IMAGE_ATTRS) {
+                    val raw = el.getAttributeNS(ANDROID_NS, attr)
+                    val key = RES_REF.matchEntire(raw)?.let { ResKey(it.groupValues[1], it.groupValues[2]) }
+                        ?: continue
+                    hits.getOrPut(key) { mutableListOf() } += file.name to nearestBackground(el, parents)
+                }
+            }
+            progress?.invoke(++processed)
+        }
+        return hits.mapValues { (_, v) -> summarize(v) }
+    }
+
     fun resolve(resourceName: String, resourceType: String): Result {
         val hits = mutableListOf<Pair<String, Any?>>()   // 布局名 -> Color / "NONSOLID" / null
         forEachLayout { file, doc ->
@@ -44,8 +75,11 @@ class HostBackgroundResolver(private val projectRoot: File) {
                 if (used) hits += file.name to nearestBackground(el, parents)
             }
         }
-        if (hits.isEmpty()) return Result.Unresolved("没有布局引用（可能在代码里用）", emptyList())
+        return summarize(hits)
+    }
 
+    private fun summarize(hits: List<Pair<String, Any?>>): Result {
+        if (hits.isEmpty()) return Result.Unresolved("没有布局引用（可能在代码里用）", emptyList())
         val hostNames = hits.map { it.first }.distinct()
         val values = hits.map { it.second }.distinct()
         val solids = values.filterIsInstance<Color>()
@@ -147,6 +181,8 @@ class HostBackgroundResolver(private val projectRoot: File) {
         const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
         private const val NON_SOLID = "NONSOLID"
         private val COLOR_REF = Regex("@(?:android:)?color/(.+)")
+        /** 匹配 @mipmap/foo 或 @drawable/foo，捕获组 1=类型 2=名称 */
+        private val RES_REF = Regex("""@(mipmap|drawable)/(\w+)""")
         private val ANDROID_IMAGE_ATTRS = listOf("src", "background", "srcCompat")
 
         /** 资源类型由所在目录决定：drawable* -> drawable, mipmap* -> mipmap */

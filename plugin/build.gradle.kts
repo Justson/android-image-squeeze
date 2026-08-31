@@ -11,6 +11,16 @@ repositories {
     intellijPlatform { defaultRepositories() }
 }
 
+kotlin {
+    compilerOptions {
+        // Kotlin 类实现 Java 接口(如 ToolWindowFactory)时，默认会为接口的 default 方法
+        // 生成委托 override。平台把其中若干 default 方法标了 @ApiStatus.Internal，
+        // 于是 plugin verifier 会报「误用 internal API」—— 尽管我们一行都没写。
+        // no-compatibility 让 Kotlin 直接沿用 Java 的 default 实现，不再生成这些 override。
+        freeCompilerArgs.add("-jvm-default=no-compatibility")
+    }
+}
+
 dependencies {
     implementation(project(":core"))
     intellijPlatform {

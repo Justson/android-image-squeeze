@@ -108,8 +108,8 @@ asset-squeeze/
     ├── SqueezeDialog.kt       预览对话框 + 应用门禁（已完成）
     ├── CwebpProvider.kt       从 jar 释放二进制（已完成）
     ├── SqueezeSettings.kt     设置页（已完成）
-    ├── SqueezeToolWindowFactory.kt  ← P3
-    └── ScanProjectAction.kt         ← P3
+    ├── SqueezeToolWindow.kt   工具窗 + 表格 + 批量应用（已完成）
+    └── ScanService.kt         并行扫描（已完成）
 ```
 
 **分层原则**：所有算法留在 `core`，`plugin` 只做 UI 和 VFS。
@@ -192,7 +192,7 @@ ToolWindow 用 `TableView<AssetReport>`，列：
 | **P0** | core 算法 + 单测 | `./gradlew :core:test` 绿 | ✅ **已完成，16/16 通过** |
 | **P1** | cwebp 下载/校验/释放链路 + 许可证合规 | 能对样例图编码出 webp | ✅ **已完成**（见 §2） |
 | **P2** | 单文件流程：右键 → 分析 → 预览 → 替换 | `verifyPlugin` 判定 Compatible | ✅ **已完成** |
-| **P3** | 全工程扫描 + 表格 + 批量应用 | 扫完一个真实工程出列表 | ⬜ |
+| **P3** | 全工程扫描 + 表格 + 批量应用 | `verifyPlugin` 干净 Compatible | ✅ **已完成** |
 | **P4** | 宿主底色解析接 PSI | 能解析出 `#F0F6FB` 这类 | ⬜ |
 | **P5** | 结果缓存、并行、设置页 | 二次扫描 <5s | ⬜ |
 
@@ -202,6 +202,19 @@ ToolWindow 用 `TableView<AssetReport>`，列：
 - 路线为 NONE（收益不足，压了只是有损叠有损）
 - 压缩后引入色带（这正是最想避免的失真）
 - 烘焙路线但宿主底色没解析出来（猜白色会在线上留下色差方块）
+
+**P3 的两个关键点**：
+
+1. **宿主底色必须一次建全量索引**。`HostBackgroundResolver.resolveAll()` 遍历一次布局
+   建立 `(资源类型, 资源名) -> 底色` 的映射。逐个调 `resolve()` 是 O(资源数 × 布局数)，
+   几百张图就会卡到不可用。注意 key 必须带资源类型 —— `@mipmap/x` 与 `@drawable/x` 不是同一个资源。
+2. **批量应用要守住和单文件一样的门禁**。烘焙路线在底色未确定时一律跳过并计入报告，
+   不能因为是批量就放松 —— 猜白色会在线上留下色差方块。
+
+**Kotlin 实现 Java 接口的坑**：Kotlin 类实现 `ToolWindowFactory` 时会为接口的
+default 方法生成委托 override，而平台把其中若干标了 `@ApiStatus.Internal`，
+于是 verifier 报「6 处误用 internal API」—— 尽管我们一行都没写。
+加 `-jvm-default=no-compatibility` 后归零。
 
 **P4 的升级点**：现在 `HostBackgroundResolver` 用 DOM 自己解析 XML。
 接 PSI（`XmlFile` / `DomManager`）后能拿到 IDE 已有的资源索引，
