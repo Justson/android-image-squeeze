@@ -1,0 +1,41 @@
+<idea-plugin>
+    <id>dev.squeeze.assetsqueeze</id>
+    <name>Asset Squeeze</name>
+    <vendor>internal</vendor>
+
+    <description><![CDATA[
+      Android 图片素材体检与压缩。
+
+      与 IDE 自带的 "Convert to WebP" 的区别：本插件不重造编码，而是替你做<b>决策</b> ——
+      判断每张图该走哪条压缩路线、哪些图压了会出色带、哪些图不能丢 alpha、
+      哪些图根本不是 UI 资源（如 assets 下被 SDK 读取的滤镜查找表）。
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="Asset Squeeze"
+                    anchor="bottom"
+                    factoryClass="dev.squeeze.plugin.SqueezeToolWindowFactory"/>
+        <projectConfigurable
+                instance="dev.squeeze.plugin.SqueezeConfigurable"
+                displayName="Asset Squeeze"
+                parentId="tools"/>
+        <projectService serviceImplementation="dev.squeeze.plugin.SqueezeSettings"/>
+    </extensions>
+
+    <actions>
+        <action id="AssetSqueeze.ScanProject"
+                class="dev.squeeze.plugin.ScanProjectAction"
+                text="Scan Project For Oversized Assets"
+                description="遍历工程，列出可优化的图片素材">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="AssetSqueeze.InspectFile"
+                class="dev.squeeze.plugin.InspectFileAction"
+                text="Squeeze: Inspect This Image"
+                description="分析当前图片并预览压缩效果">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
