@@ -3,38 +3,47 @@
     <name>Asset Squeeze</name>
     <vendor>internal</vendor>
 
+    <!--
+      描述必须以拉丁字符开头且有足够长度，这是 Marketplace 的硬规则，
+      plugin verifier 会直接判定为 Invalid Plugin。别把开头换成中文。
+    -->
     <description><![CDATA[
-      Android 图片素材体检与压缩。
-
-      与 IDE 自带的 "Convert to WebP" 的区别：本插件不重造编码，而是替你做<b>决策</b> ——
-      判断每张图该走哪条压缩路线、哪些图压了会出色带、哪些图不能丢 alpha、
-      哪些图根本不是 UI 资源（如 assets 下被 SDK 读取的滤镜查找表）。
+      Audits and compresses Android image assets. This is not another
+      "Convert to WebP" &mdash; the IDE already ships one. The value here is the decision
+      logic it lacks: which route each asset can safely take, and which ones must be
+      left alone.
+      <br><br>
+      The route is chosen by the shape of the alpha channel. Assets with hard-edged alpha
+      (only 0 or 255) get lossy RGB plus lossless alpha &mdash; a binary channel cannot band,
+      so this needs no knowledge of the host background. Assets with gradient alpha keep
+      almost all of their bytes in the alpha plane, so the only way to shrink them is to
+      composite onto the host background and drop alpha entirely.
+      <br><br>
+      Three metrics guard the result: banding detection along the gradient (per-pixel error
+      is blind to it), dither-versus-texture classification, and per-pixel delta. Assets under
+      <code>assets/</code> and nine-patch files are excluded outright &mdash; they are data
+      or have stretch markers, not plain images.
+      <br><br>
+      Usage: right-click an image in the Project view &rarr; <b>Squeeze: Inspect This Image</b>.
+      <br><br>
+      中文说明见项目 README。本插件内置 Google 的 cwebp（libwebp，BSD-3-Clause），
+      许可证见 jar 内 licenses/libwebp-COPYING.txt。
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="Asset Squeeze"
-                    anchor="bottom"
-                    factoryClass="dev.squeeze.plugin.SqueezeToolWindowFactory"/>
         <projectConfigurable
                 instance="dev.squeeze.plugin.SqueezeConfigurable"
                 displayName="Asset Squeeze"
                 parentId="tools"/>
-        <projectService serviceImplementation="dev.squeeze.plugin.SqueezeSettings"/>
     </extensions>
 
     <actions>
-        <action id="AssetSqueeze.ScanProject"
-                class="dev.squeeze.plugin.ScanProjectAction"
-                text="Scan Project For Oversized Assets"
-                description="遍历工程，列出可优化的图片素材">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
         <action id="AssetSqueeze.InspectFile"
                 class="dev.squeeze.plugin.InspectFileAction"
                 text="Squeeze: Inspect This Image"
-                description="分析当前图片并预览压缩效果">
+                description="Analyze this image, preview the compression and optionally replace it">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
         </action>
     </actions>

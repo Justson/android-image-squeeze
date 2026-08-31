@@ -53,7 +53,7 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
             (bgCombo.selectedItem as? BgOption)?.let { opt ->
                 leftView.background2 = opt.color
                 rightView.background2 = opt.color
-                leftView.repaint(); rightView.repaint()
+                leftView.refresh(); rightView.refresh()
             }
         }
     }
@@ -89,7 +89,8 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
         info.text = if (hostBackground == null)
             "$summary ｜ ⚠ 宿主底色未解析出来，预览仅供参考"
         else summary
-        repaint()
+        leftView.refresh()
+        rightView.refresh()
     }
 
     private fun Color.toHex() = "#%02X%02X%02X".format(red, green, blue)
@@ -132,12 +133,13 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
             preferredSize = Dimension(JBUI.scale(320), JBUI.scale(320))
         }
 
-        override fun repaint() {
-            super.repaint()
-            if (::canvas.isInitializedSafely()) canvas.repaint()
+        /**
+         * 不覆写 repaint()：Swing 在父类构造期就会调用它，那时 canvas 还没初始化，
+         * 覆写并访问 canvas 会 NPE。改由外部显式调用本方法。
+         */
+        fun refresh() {
+            canvas.repaint()
         }
-
-        private fun Any.isInitializedSafely() = true
     }
 }
 

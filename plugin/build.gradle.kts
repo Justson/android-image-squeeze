@@ -22,6 +22,13 @@ dependencies {
 }
 
 intellijPlatform {
+    // 官方 verifier：检查 API 兼容性、plugin.xml 合法性、是否误用 internal API。
+    // current() = 只校验当前构建基座(IC 2023.3.8 = platform 233)，不额外下载 IDE。
+    // 想覆盖更多版本可改成 recommended()，但会按 since/untilBuild 拉一堆发行包。
+    pluginVerification {
+        ides { current() }
+    }
+
     pluginConfiguration {
         id = "dev.squeeze.assetsqueeze"
         name = "Asset Squeeze"

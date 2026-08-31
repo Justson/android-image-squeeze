@@ -6,3 +6,6 @@ build/
 out/
 cwebp-cache/
 local.properties
+
+# IntelliJ Platform Gradle Plugin 的沙箱与本地产物（含超长文件名，勿提交）
+.intellijPlatform/

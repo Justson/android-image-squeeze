@@ -104,9 +104,12 @@ asset-squeeze/
 └── plugin/                   IDE 集成
     ├── ComparePanel.kt       并排预览 + 底色切换（已完成）
     ├── ApplyService.kt       写回/改名（已完成）
-    ├── SqueezeToolWindowFactory.kt  ← 待补
-    ├── ScanProjectAction.kt         ← 待补
-    └── SqueezeSettings.kt           ← 待补
+    ├── InspectFileAction.kt   右键入口，后台线程分析（已完成）
+    ├── SqueezeDialog.kt       预览对话框 + 应用门禁（已完成）
+    ├── CwebpProvider.kt       从 jar 释放二进制（已完成）
+    ├── SqueezeSettings.kt     设置页（已完成）
+    ├── SqueezeToolWindowFactory.kt  ← P3
+    └── ScanProjectAction.kt         ← P3
 ```
 
 **分层原则**：所有算法留在 `core`，`plugin` 只做 UI 和 VFS。
@@ -188,10 +191,17 @@ ToolWindow 用 `TableView<AssetReport>`，列：
 |---|---|---|---|
 | **P0** | core 算法 + 单测 | `./gradlew :core:test` 绿 | ✅ **已完成，16/16 通过** |
 | **P1** | cwebp 下载/校验/释放链路 + 许可证合规 | 能对样例图编码出 webp | ✅ **已完成**（见 §2） |
-| **P2** | 单文件流程：右键 → 分析 → 预览 → 替换 | 在真实 Android 工程上跑通一张图 | ⬜ |
+| **P2** | 单文件流程：右键 → 分析 → 预览 → 替换 | `verifyPlugin` 判定 Compatible | ✅ **已完成** |
 | **P3** | 全工程扫描 + 表格 + 批量应用 | 扫完一个真实工程出列表 | ⬜ |
 | **P4** | 宿主底色解析接 PSI | 能解析出 `#F0F6FB` 这类 | ⬜ |
 | **P5** | 结果缓存、并行、设置页 | 二次扫描 <5s | ⬜ |
+
+**P2 的落点**：`InspectFileAction`（右键入口，分析在后台线程跑）
+→ `SqueezeDialog`（DialogWrapper，内嵌 ComparePanel）→ `ApplyService`。
+「应用」按钮的启用条件是**有意收紧**的，以下三种情况一律禁用而不是给个能点的危险按钮：
+- 路线为 NONE（收益不足，压了只是有损叠有损）
+- 压缩后引入色带（这正是最想避免的失真）
+- 烘焙路线但宿主底色没解析出来（猜白色会在线上留下色差方块）
 
 **P4 的升级点**：现在 `HostBackgroundResolver` 用 DOM 自己解析 XML。
 接 PSI（`XmlFile` / `DomManager`）后能拿到 IDE 已有的资源索引，
