@@ -50,7 +50,7 @@ class SqueezePanel(private val project: Project) : JPanel(BorderLayout()) {
             add(ApplySelectedAction())
         }
         val toolbar = ActionManager.getInstance()
-            .createActionToolbar("AssetSqueeze", group, true)
+            .createActionToolbar("ImageSqueeze", group, true)
         toolbar.targetComponent = this
         add(toolbar.component, BorderLayout.NORTH)
         add(ScrollPaneFactory.createScrollPane(table), BorderLayout.CENTER)
@@ -60,7 +60,7 @@ class SqueezePanel(private val project: Project) : JPanel(BorderLayout()) {
     private fun codecOrWarn(): Analyzer? {
         val codec = runCatching { CwebpProvider.codec(SqueezeSettings.of(project).cwebpPath) }
             .getOrElse {
-                Messages.showErrorDialog(project, it.message ?: "找不到 cwebp", "Asset Squeeze")
+                Messages.showErrorDialog(project, it.message ?: "找不到 cwebp", "Image Squeeze")
                 return null
             }
         return Analyzer(codec)
@@ -70,7 +70,7 @@ class SqueezePanel(private val project: Project) : JPanel(BorderLayout()) {
         override fun getActionUpdateThread() = ActionUpdateThread.BGT
         override fun actionPerformed(e: AnActionEvent) {
             val analyzer = codecOrWarn() ?: return
-            object : Task.Backgroundable(project, "Asset Squeeze 扫描中", true) {
+            object : Task.Backgroundable(project, "Image Squeeze 扫描中", true) {
                 private var rows: List<ScanRow> = emptyList()
                 override fun run(indicator: ProgressIndicator) {
                     rows = ScanService(project).scan(analyzer, indicator)
@@ -149,7 +149,7 @@ class SqueezePanel(private val project: Project) : JPanel(BorderLayout()) {
                         if (skipped.size > 15) append("…以及另外 ${skipped.size - 15} 个")
                     }
                 },
-                "Asset Squeeze"
+                "Image Squeeze"
             )
             // 已替换的文件体积变了，报告失效，提示重扫
             status.text = "已应用 $applied 个，建议重新扫描以刷新数据"

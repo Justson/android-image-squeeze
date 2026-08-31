@@ -7,7 +7,7 @@ import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileVisitor
 import dev.squeeze.core.Analyzer
-import dev.squeeze.core.AssetReport
+import dev.squeeze.core.ImageReport
 import dev.squeeze.core.HostBackgroundResolver
 import java.io.File
 import java.util.concurrent.Callable
@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /** 一行扫描结果：分析报告 + 该资源的宿主底色 */
 data class ScanRow(
     val file: VirtualFile,
-    val report: AssetReport,
+    val report: ImageReport,
     val hostBackground: HostBackgroundResolver.Result,
 )
 

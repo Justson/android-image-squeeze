@@ -1,4 +1,4 @@
-rootProject.name = "asset-squeeze"
+rootProject.name = "image-squeeze"
 
 include("core")
 include("plugin")

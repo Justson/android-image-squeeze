@@ -44,8 +44,8 @@ intellijPlatform {
     }
 
     pluginConfiguration {
-        id = "dev.squeeze.assetsqueeze"
-        name = "Asset Squeeze"
+        id = "dev.squeeze.imagesqueeze"
+        name = "Image Squeeze"
         version = providers.gradleProperty("pluginVersion")
         ideaVersion {
             sinceBuild = providers.gradleProperty("pluginSinceBuild")

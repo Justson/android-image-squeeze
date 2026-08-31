@@ -13,7 +13,7 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.xmlb.XmlSerializerUtil
 
 @Service(Service.Level.PROJECT)
-@State(name = "AssetSqueezeSettings", storages = [Storage("assetSqueeze.xml")])
+@State(name = "ImageSqueezeSettings", storages = [Storage("imageSqueeze.xml")])
 class SqueezeSettings : PersistentStateComponent<SqueezeSettings> {
 
     /** 留空则用随包二进制，再没有就找 PATH */
@@ -40,7 +40,7 @@ class SqueezeSettings : PersistentStateComponent<SqueezeSettings> {
 }
 
 class SqueezeConfigurable(private val project: Project) :
-    BoundConfigurable("Asset Squeeze") {
+    BoundConfigurable("Image Squeeze") {
 
     override fun createPanel() = panel {
         val s = SqueezeSettings.of(project)

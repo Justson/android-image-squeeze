@@ -1,4 +1,4 @@
-# Asset Squeeze
+# Image Squeeze
 
 An IntelliJ / Android Studio plugin that audits and compresses Android image assets.
 
@@ -82,7 +82,7 @@ Calibrate the dither/texture thresholds against your own assets:
 core/     pure JVM, no IDE dependency, unit-testable
   ImageStats.kt              metrics + every threshold with its measured basis
   WebpCodec.kt               cwebp wrapper, three-tier binary lookup
-  Analyzer.kt                route decision -> AssetReport
+  Analyzer.kt                route decision -> ImageReport
   HostBackgroundResolver.kt  walks layout XML parent chains for the host color
 plugin/   IDE integration
   ComparePanel.kt            side-by-side preview with switchable background
@@ -111,7 +111,7 @@ Lookup order: explicit path in settings -> bundled binary -> `cwebp` on `PATH`.
 - **One asset**: right-click an image in the Project view -> *Squeeze: Inspect This Image*.
   Shows the original and the compressed result side by side, **on the same background**,
   and applies only if the result passes the banding check.
-- **Whole project**: the *Asset Squeeze* tool window scans in parallel, ranks by bytes saved,
+- **Whole project**: the *Image Squeeze* tool window scans in parallel, ranks by bytes saved,
   and applies to a multi-selection in one go.
 
 The Apply button is deliberately disabled when the route is `NONE` (not worth it) or when the

@@ -1,4 +1,4 @@
-# Asset Squeeze — IDE 插件实施方案
+# Image Squeeze — IDE 插件实施方案
 
 Android 图片素材体检与压缩插件。当前状态：`core` **16 个测试全绿**（含用真实 cwebp
 跑的端到端编码验证）；cwebp 分发链路已打通；`plugin` 待补 UI 装配。
@@ -78,7 +78,7 @@ JVM 上没有纯 Java 的 WebP 编码器。两个选项：
 产物落到 `build/cwebp-bin/<platform>/`，由 `processResources` 映射进 jar 的 `bin/<platform>/`。
 
 **运行时**（`CwebpProvider`）：jar 里的文件不能直接执行，首次使用释放到
-`PathManager.getSystemPath()/asset-squeeze/bin/`，只释放一次、IDE 重启复用。
+`PathManager.getSystemPath()/image-squeeze/bin/`，只释放一次、IDE 重启复用。
 **非 Windows 平台必须显式 `setExecutable(true)`** —— jar 不保留 POSIX 权限位，
 解出来是 0644，直接跑会 Permission denied。
 
@@ -95,11 +95,11 @@ JVM 上没有纯 Java 的 WebP 编码器。两个选项：
 ## 3. 模块结构
 
 ```
-asset-squeeze/
+image-squeeze/
 ├── core/                     纯 JVM，无 IDE 依赖，可单测（已完成）
 │   ├── ImageStats.kt         噪点/色带/ΔRGB/alpha 剖面，所有阈值+实测数据
 │   ├── WebpCodec.kt          cwebp 封装 + 三级定位
-│   ├── Analyzer.kt           路线决策 → AssetReport
+│   ├── Analyzer.kt           路线决策 → ImageReport
 │   └── HostBackgroundResolver.kt   布局父链解析宿主底色
 └── plugin/                   IDE 集成
     ├── ComparePanel.kt       并排预览 + 底色切换（已完成）
@@ -159,7 +159,7 @@ object : Task.Backgroundable(project, "Scanning assets", true) {
 }
 ```
 
-ToolWindow 用 `TableView<AssetReport>`，列：
+ToolWindow 用 `TableView<ImageReport>`，列：
 
 | 列 | 来源 | 说明 |
 |---|---|---|

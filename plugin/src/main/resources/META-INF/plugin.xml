@@ -1,6 +1,6 @@
 <idea-plugin>
-    <id>dev.squeeze.assetsqueeze</id>
-    <name>Asset Squeeze</name>
+    <id>dev.squeeze.imagesqueeze</id>
+    <name>Image Squeeze</name>
     <vendor>internal</vendor>
 
     <!--
@@ -25,7 +25,7 @@
       or have stretch markers, not plain images.
       <br><br>
       Usage: right-click an image in the Project view &rarr; <b>Squeeze: Inspect This Image</b>,
-      or open the <b>Asset Squeeze</b> tool window to scan the whole project and apply in bulk.
+      or open the <b>Image Squeeze</b> tool window to scan the whole project and apply in bulk.
       <br><br>
       中文说明见项目 README。本插件内置 Google 的 cwebp（libwebp，BSD-3-Clause），
       许可证见 jar 内 licenses/libwebp-COPYING.txt。
@@ -34,17 +34,17 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="Asset Squeeze"
+        <toolWindow id="Image Squeeze"
                     anchor="bottom"
                     factoryClass="dev.squeeze.plugin.SqueezeToolWindowFactory"/>
         <projectConfigurable
                 instance="dev.squeeze.plugin.SqueezeConfigurable"
-                displayName="Asset Squeeze"
+                displayName="Image Squeeze"
                 parentId="tools"/>
     </extensions>
 
     <actions>
-        <action id="AssetSqueeze.InspectFile"
+        <action id="ImageSqueeze.InspectFile"
                 class="dev.squeeze.plugin.InspectFileAction"
                 text="Squeeze: Inspect This Image"
                 description="Analyze this image, preview the compression and optionally replace it">

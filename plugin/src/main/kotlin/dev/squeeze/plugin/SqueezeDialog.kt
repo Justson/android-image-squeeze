@@ -7,7 +7,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import dev.squeeze.core.Analyzer
-import dev.squeeze.core.AssetReport
+import dev.squeeze.core.ImageReport
 import dev.squeeze.core.CompressionRoute
 import dev.squeeze.core.HostBackgroundResolver
 import dev.squeeze.core.WebpCodec
@@ -30,7 +30,7 @@ import javax.swing.JPanel
 class SqueezeDialog(
     private val project: Project,
     private val file: VirtualFile,
-    private val report: AssetReport,
+    private val report: ImageReport,
     private val analyzer: Analyzer,
     private val hostBg: HostBackgroundResolver.Result,
 ) : DialogWrapper(project, true) {
@@ -41,7 +41,7 @@ class SqueezeDialog(
     private var blockedReason: String? = null
 
     init {
-        title = "Asset Squeeze — ${file.name}"
+        title = "Image Squeeze — ${file.name}"
         setOKButtonText("替换原文件")
         init()
         load()
@@ -164,7 +164,7 @@ class SqueezeDialog(
         Messages.showInfoMessage(
             project,
             "$what\n省下 ${saved / 1024} KB。可用 Ctrl+Z 撤销。",
-            "Asset Squeeze"
+            "Image Squeeze"
         )
     }
 

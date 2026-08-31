@@ -10,7 +10,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VirtualFile
 import dev.squeeze.core.Analyzer
-import dev.squeeze.core.AssetReport
+import dev.squeeze.core.ImageReport
 import dev.squeeze.core.HostBackgroundResolver
 import java.io.File
 
@@ -34,7 +34,7 @@ class InspectFileAction : AnAction() {
 
         val codec = runCatching { CwebpProvider.codec(SqueezeSettings.of(project).cwebpPath) }
             .getOrElse {
-                Messages.showErrorDialog(project, it.message ?: "找不到 cwebp", "Asset Squeeze")
+                Messages.showErrorDialog(project, it.message ?: "找不到 cwebp", "Image Squeeze")
                 return
             }
         val analyzer = Analyzer(codec)
@@ -51,7 +51,7 @@ class InspectFileAction : AnAction() {
 
         // 分析要跑两次 cwebp，必须离开 EDT
         object : Task.Backgroundable(project, "分析 ${file.name}", true) {
-            private var report: AssetReport? = null
+            private var report: ImageReport? = null
             private var hostBg: HostBackgroundResolver.Result? = null
             private var failure: Throwable? = null
 

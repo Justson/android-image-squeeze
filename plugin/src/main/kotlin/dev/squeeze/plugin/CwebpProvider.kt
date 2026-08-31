@@ -18,7 +18,7 @@ object CwebpProvider {
     private val log = logger<CwebpProvider>()
 
     private val binDir: File by lazy {
-        File(PathManager.getSystemPath(), "asset-squeeze/bin/${WebpCodec.platformDirName()}")
+        File(PathManager.getSystemPath(), "image-squeeze/bin/${WebpCodec.platformDirName()}")
     }
 
     /**

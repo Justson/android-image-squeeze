@@ -30,7 +30,7 @@ enum class CompressionRoute {
     NONE,
 }
 
-data class AssetReport(
+data class ImageReport(
     val file: File,
     val width: Int,
     val height: Int,
@@ -73,7 +73,7 @@ class Analyzer(private val codec: WebpCodec) {
         file: File,
         minSavingRatio: Double = 1.5,
         hostBackground: Color? = null,
-    ): AssetReport {
+    ): ImageReport {
         val img = WebpCodec.read(file)
         val cur = file.length()
         val alpha = ImageStats.alphaProfile(img)
@@ -136,7 +136,7 @@ class Analyzer(private val codec: WebpCodec) {
             ImageStats.compositeOn(back, Color.WHITE)
         ).max
 
-        return AssetReport(
+        return ImageReport(
             file, img.width, img.height, cur, alpha, alphaBanding, noise,
             route, estimated, dmax, warnings
         )

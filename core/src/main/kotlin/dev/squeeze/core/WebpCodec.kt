@@ -93,7 +93,7 @@ class WebpCodec(private val cwebpPath: String) {
                 }
             }
             if (probe("cwebp")) return WebpCodec("cwebp")
-            error("找不到 cwebp。请在 Settings > Tools > Asset Squeeze 中指定路径，" +
+            error("找不到 cwebp。请在 Settings > Tools > Image Squeeze 中指定路径，" +
                     "或安装 libwebp（brew install webp / apt install webp）")
         }
 
