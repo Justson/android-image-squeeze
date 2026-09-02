@@ -33,6 +33,14 @@
     ]]></description>
 
     <change-notes><![CDATA[
+      <b>0.1.1</b>
+      <ul>
+        <li>The Project view action is now dumb-aware: it stays usable while the IDE is indexing,
+            which is exactly when a freshly added image used to be unclickable.</li>
+        <li>Refresh the VFS before a full-project scan so newly dropped files are never missed.</li>
+        <li>When no host background can be resolved, a background color can now be entered by hand
+            and actually baked, instead of only re-tinting an empty preview.</li>
+      </ul>
       <b>0.1.0</b>
       <ul>
         <li>Audit Android PNG, JPEG and WebP assets from the Project view or tool window.</li>
