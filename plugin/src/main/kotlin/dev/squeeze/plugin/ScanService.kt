@@ -3,6 +3,7 @@ package dev.squeeze.plugin
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileVisitor
@@ -49,6 +50,9 @@ class ScanService(private val project: Project) {
         val base = project.basePath
             ?.let { com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByPath(it) }
             ?: return out
+        // 刚拖进工程的图片可能还没进 VFS，扫描前强制同步刷新一次，
+        // 否则会出现「文件明明在磁盘上却扫不到」。在后台线程同步刷新是允许的。
+        VfsUtil.markDirtyAndRefresh(false, true, false, base)
         VfsUtilCore.visitChildrenRecursively(base, object : VirtualFileVisitor<Any>() {
             override fun visitFile(file: VirtualFile): Boolean {
                 if (file.isDirectory) {

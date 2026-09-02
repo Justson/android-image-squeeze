@@ -1,5 +1,6 @@
 package dev.squeeze.plugin
 
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
@@ -13,6 +14,7 @@ import dev.squeeze.core.HostBackgroundResolver
 import dev.squeeze.core.WebpCodec
 import java.awt.BorderLayout
 import java.awt.Color
+import java.awt.image.BufferedImage
 import java.io.File
 import javax.swing.Action
 import javax.swing.JComponent
@@ -30,20 +32,46 @@ import javax.swing.JPanel
 class SqueezeDialog(
     private val project: Project,
     private val file: VirtualFile,
-    private val report: ImageReport,
+    initialReport: ImageReport,
     private val analyzer: Analyzer,
     private val hostBg: HostBackgroundResolver.Result,
 ) : DialogWrapper(project, true) {
 
     private val comparePanel = ComparePanel()
     private val detail = JBLabel()
+    private var report: ImageReport = initialReport
     private var result: Analyzer.Result? = null
     private var blockedReason: String? = null
+
+    /** 用户手动指定的底色。布局里查不到底色时，由人来断言这张图身后是什么颜色 */
+    private var manualBg: Color? = null
 
     init {
         title = "Image Squeeze — ${file.name}"
         setOKButtonText("替换原文件")
+        comparePanel.onManualBake = { color -> bakeManually(color) }
         init()
+        load()
+    }
+
+    /**
+     * 按用户给定的底色重新分析 + 编码。
+     * 底色解析不出来时，之前只能干看着一片空白的右侧 —— 换预览底色不会产出压缩结果，
+     * 必须真的用这个颜色跑一遍烘焙。
+     */
+    private fun bakeManually(color: Color) {
+        val io = File(file.path)
+        val outcome = runCatching {
+            ProgressManager.getInstance().runProcessWithProgressSynchronously<ImageReport, Exception>(
+                { analyzer.analyze(io, hostBackground = color) },
+                "按底色 ${color.toHexString()} 重新分析…", true, project,
+            )
+        }.getOrElse {
+            Messages.showErrorDialog(project, it.message ?: it.toString(), "分析失败")
+            return
+        }
+        manualBg = color
+        report = outcome
         load()
     }
 
@@ -53,11 +81,27 @@ class SqueezeDialog(
         preferredSize = JBUI.size(900, 560)
     }
 
-    private fun bakeColor(): Color? = (hostBg as? HostBackgroundResolver.Result.Solid)?.color
+    private fun bakeColor(): Color? =
+        manualBg ?: (hostBg as? HostBackgroundResolver.Result.Solid)?.color
+
+    /**
+     * 硬边缘 alpha 走 KEEP_ALPHA 已是最优且安全，没有手动烘焙的理由；
+     * 只有「渐变 alpha + 底色没解析出来」这种被卡住的情况才把决定权交给人。
+     */
+    private fun manualBakeOffered(): Boolean =
+        !report.alpha.isHardEdged &&
+            hostBg !is HostBackgroundResolver.Result.Solid
 
     private fun load() {
         val io = File(file.path)
         val original = WebpCodec.read(io)
+        blockedReason = null
+        isOKActionEnabled = true
+
+        manualBg?.let { manual ->
+            loadManualBake(io, original, manual)
+            return
+        }
 
         if (report.route == CompressionRoute.NONE) {
             blockedReason = if (!report.alpha.isHardEdged && bakeColor() == null) {
@@ -70,6 +114,7 @@ class SqueezeDialog(
                 original, null, bakeColor(), "路线：不压缩",
                 hostBackgroundRelevant = !report.alpha.isHardEdged,
                 emptyMessage = blockedReason!!,
+                allowManualBake = manualBakeOffered(),
             )
             detail.text = describe(blockedReason!!)
             isOKActionEnabled = false
@@ -88,6 +133,7 @@ class SqueezeDialog(
             comparePanel.show(
                 original, null, null, "路线：烘焙底色（受阻）",
                 emptyMessage = blockedReason!!,
+                allowManualBake = manualBakeOffered(),
             )
             detail.text = describe(blockedReason!!)
             isOKActionEnabled = false
@@ -112,12 +158,55 @@ class SqueezeDialog(
                 noise = report.noise,
             ),
             hostBackgroundRelevant = report.route == CompressionRoute.BAKE_BACKGROUND,
+            allowManualBake = manualBakeOffered(),
         )
         if (!r.bandingOk) {
             blockedReason = "压缩后出现色带。逐像素误差看不出这种失真，" +
                 "但沿渐变方向的色阶统计能抓到 —— 建议调高质量后重试"
             isOKActionEnabled = false
         }
+        detail.text = describe(blockedReason)
+    }
+
+    /**
+     * 手动底色分支：无条件按该颜色烘焙一份出来给人看。
+     * 这里不走 [ImageReport.route] 的判定 —— 用户已经明确说了「就按这个色烘焙」，
+     * 收益够不够、有没有色带交给下面的门槛去拦，而不是直接不给预览。
+     */
+    private fun loadManualBake(io: File, original: BufferedImage, manual: Color) {
+        val quality = SqueezeSettings.of(project).bakeQuality
+        val r = runCatching {
+            ProgressManager.getInstance().runProcessWithProgressSynchronously<Analyzer.Result, Exception>(
+                { analyzer.compress(io, CompressionRoute.BAKE_BACKGROUND, manual, quality) },
+                "按底色 ${manual.toHexString()} 烘焙…", true, project,
+            )
+        }.getOrElse {
+            Messages.showErrorDialog(project, it.message ?: it.toString(), "烘焙失败")
+            return
+        }
+        result = r
+
+        val newBytes = r.bytes.size.toLong()
+        comparePanel.show(
+            original, WebpCodec.read(r.bytes), manual,
+            summarize(
+                route = "烘焙手动指定底色 ${manual.toHexString()}",
+                currentBytes = report.currentBytes,
+                newBytes = newBytes,
+                alphaPreserved = r.alphaPreserved,
+                bandingOk = r.bandingOk,
+                noise = report.noise,
+            ),
+            allowManualBake = true,
+            bgLabel = "手动底色",
+        )
+        blockedReason = when {
+            !r.bandingOk -> "按该底色烘焙后出现色带，建议换路线或调高质量"
+            newBytes >= report.currentBytes -> "烘焙后反而变大（${newBytes / 1024}KB / " +
+                "${report.currentBytes / 1024}KB），不值得替换"
+            else -> null
+        }
+        isOKActionEnabled = blockedReason == null
         detail.text = describe(blockedReason)
     }
 
@@ -135,6 +224,10 @@ class SqueezeDialog(
                     "${hostBg.colors.joinToString { it.toHexString() }}<br>")
             is HostBackgroundResolver.Result.Unresolved ->
                 append("宿主底色未解析：${hostBg.reason}<br>")
+        }
+        manualBg?.let {
+            append("<b>手动指定底色 ${it.toHexString()}</b>：烘焙会丢掉 alpha，" +
+                "替换前请确认这张图只用在该颜色之上<br>")
         }
         report.warnings.forEach { append("• $it<br>") }
         if (blocked != null) append("<b>无法应用：$blocked</b>")

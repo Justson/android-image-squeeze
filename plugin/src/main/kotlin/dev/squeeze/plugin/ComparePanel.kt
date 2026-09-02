@@ -39,6 +39,18 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
     private val customColor = JBTextField("#FFFFFF", 8)
     private val info = JBLabel()
 
+    /**
+     * 用户手动指定底色并要求「按它烘焙」时回调。
+     * 换预览底色只会改渲染背景，压不出结果的图右侧仍是空白 —— 想看烘焙效果必须真去重跑一次编码。
+     */
+    var onManualBake: ((Color) -> Unit)? = null
+
+    private val bakeButton = JButton("按此底色烘焙").apply {
+        toolTipText = "布局里解析不出底色时，手动指定一个并按它重新编码预览"
+        isVisible = false
+        addActionListener { readCustomColor()?.let { onManualBake?.invoke(it) } }
+    }
+
     init {
         val controls = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(8), JBUI.scale(4))).apply {
             add(JBLabel("预览底色（仅影响预览）："))
@@ -46,6 +58,7 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
             add(JBLabel("自定义："))
             add(customColor)
             add(JButton("预览").apply { addActionListener { applyCustomColor() } })
+            add(bakeButton)
         }
         val top = JPanel(BorderLayout()).apply {
             add(controls, BorderLayout.CENTER)
@@ -73,15 +86,23 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
         override fun toString() = label
     }
 
-    private fun applyCustomColor() {
+    /** 读取输入框里的颜色；非法时在框上标红并返回 null */
+    private fun readCustomColor(): Color? {
         val color = parseSolidColor(customColor.text) ?: run {
             customColor.putClientProperty("JComponent.outline", "error")
             customColor.toolTipText = "请输入 #RGB 或 #RRGGBB，例如 #F0F6FB"
-            return
+            customColor.repaint()
+            return null
         }
         customColor.putClientProperty("JComponent.outline", null)
         customColor.toolTipText = null
         customColor.text = color.toHex()
+        customColor.repaint()
+        return color
+    }
+
+    private fun applyCustomColor() {
+        val color = readCustomColor() ?: return
 
         val model = bgCombo.model as DefaultComboBoxModel<BgOption>
         for (i in model.size - 1 downTo 0) {
@@ -95,6 +116,8 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
     /**
      * @param hostBackground 解析出的宿主底色；为 null 时默认落到棋盘格。
      * @param hostBackgroundRelevant 当前路线是否依赖宿主底色；只有依赖且未解析时才警告。
+     * @param allowManualBake 是否给出「按此底色烘焙」按钮（底色解析不出、但烘焙有意义时）。
+     * @param bgLabel 首个底色项的名字；手动指定时不能再叫「宿主底色」。
      */
     fun show(
         original: BufferedImage,
@@ -103,9 +126,12 @@ class ComparePanel : JBPanel<ComparePanel>(BorderLayout()) {
         summary: String,
         hostBackgroundRelevant: Boolean = true,
         emptyMessage: String = "未生成压缩结果",
+        allowManualBake: Boolean = false,
+        bgLabel: String = "宿主底色",
     ) {
+        bakeButton.isVisible = allowManualBake
         val options = buildList {
-            hostBackground?.let { add(BgOption("宿主底色 ${it.toHex()}", it)) }
+            hostBackground?.let { add(BgOption("$bgLabel ${it.toHex()}", it)) }
             if (hostBackground == null) add(BgOption("棋盘格（看 alpha 形状）", null))
             add(BgOption("白 #FFFFFF", Color.WHITE))
             add(BgOption("灰 #808080", Color(128, 128, 128)))

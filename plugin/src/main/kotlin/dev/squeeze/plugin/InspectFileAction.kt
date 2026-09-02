@@ -6,6 +6,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VirtualFile
@@ -14,8 +15,14 @@ import dev.squeeze.core.ImageReport
 import dev.squeeze.core.HostBackgroundResolver
 import java.io.File
 
-/** 右键单张图片 -> 分析 -> 预览 -> 替换 */
-class InspectFileAction : AnAction() {
+/**
+ * 右键单张图片 -> 分析 -> 预览 -> 替换。
+ *
+ * 必须是 DumbAware：不加的话，IDE 在索引期间会把这个菜单项禁掉，
+ * 表现就是「刚拖进来的新图右键点不了，要等好一会儿」—— 而拖入新资源恰好会触发重新索引。
+ * 本 action 全程只读文件系统（cwebp + 布局 XML 的 DOM 解析），不碰任何索引，标记安全。
+ */
+class InspectFileAction : AnAction(), DumbAware {
 
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
